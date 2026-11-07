@@ -123,26 +123,37 @@ async function HeroVisual() {
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           {[
-            { k: "Eólica real ayer", v: pct(p?.real_ayer_pct) },
-            { k: "Error ayer", v: pct(p?.error_ayer_pp, "p.p.") },
+            { k: "Eólica real ayer", v: pct(p?.real_ayer_pct), t: "Parte de la electricidad de Canarias que fue eólica ayer, según REE." },
+            { k: "Error ayer", v: pct(p?.error_ayer_pp, "p.p."), t: "Diferencia entre lo que predijo el modelo para ayer y el valor real, en puntos porcentuales." },
             {
               k: p?.n_dias_mae ? `Error medio (${p.n_dias_mae} d)` : "Error medio",
               v: pct(p?.mae_30d, "p.p."),
+              t: "Media de los errores diarios en los últimos días con dato real, en puntos porcentuales.",
             },
-            { k: "Renovable ayer", v: pct(p?.renovable_ayer_pct) },
+            { k: "Renovable ayer", v: pct(p?.renovable_ayer_pct), t: "Parte de la electricidad de Canarias que fue renovable (eólica, solar y otras) ayer." },
           ].map((s) => (
-            <div key={s.k} className="rounded-lg bg-white/[0.06] px-3 py-2">
+            <div key={s.k} tabIndex={0} className="group relative rounded-lg bg-white/[0.06] px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
               <p className="text-[11px] text-slate-400">{s.k}</p>
               <p className="text-sm font-semibold tabular-nums">{s.v}</p>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-56 rounded-lg border border-white/15 bg-navy-900 px-3 py-2 text-xs leading-snug text-slate-200 opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+              >
+                {s.t}
+              </span>
             </div>
           ))}
         </div>
+
+        <p className="mt-3 text-[11px] leading-snug text-slate-400">
+          p.p. = puntos porcentuales: diferencia entre el porcentaje previsto y el real.
+        </p>
 
         <a
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-5 inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-300"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-300"
         >
           Datos de REE y Open-Meteo · ver el proyecto
           <Icon name="arrowRight" size={14} />
