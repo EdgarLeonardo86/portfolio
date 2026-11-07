@@ -50,76 +50,105 @@ export function Hero() {
   );
 }
 
-// Composición propia en SVG: curva de generación + panel de indicadores.
-function HeroVisual() {
-  const bars = [38, 52, 46, 68, 74, 61, 82, 90];
+const DATA_URL =
+  "https://raw.githubusercontent.com/EdgarLeonardo86/energia-canarias/main/data/prediccion_hoy.json";
+const REPO_URL = "https://github.com/EdgarLeonardo86/energia-canarias";
+
+type Prediccion = {
+  fecha: string;
+  prediccion_eolica_pct: number | null;
+  real_ayer_pct: number | null;
+  error_ayer_pp: number | null;
+  renovable_ayer_pct: number | null;
+  mae_30d: number | null;
+  n_dias_mae?: number | null;
+};
+
+// Lee la predicción del día del repositorio energia-canarias. Se refresca cada 30 minutos.
+async function getPrediccion(): Promise<Prediccion | null> {
+  try {
+    const res = await fetch(DATA_URL, { next: { revalidate: 1800 } });
+    if (!res.ok) return null;
+    return (await res.json()) as Prediccion;
+  } catch {
+    return null;
+  }
+}
+
+const pct = (v: number | null | undefined, unit = "%") =>
+  v === null || v === undefined
+    ? "—"
+    : `${v.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`;
+
+const fechaLarga = (iso: string) => {
+  const f = new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return f.charAt(0).toUpperCase() + f.slice(1);
+};
+
+// Panel con la predicción real de cada día; si no hay datos, muestra una versión sin cifras.
+async function HeroVisual() {
+  const p = await getPrediccion();
+
   return (
-    <div aria-hidden="true" className="relative mx-auto w-full max-w-md">
+    <div className="relative mx-auto w-full max-w-md">
       <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-6 shadow-2xl backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400">Generación prevista</p>
-            <p className="mt-1 font-display text-2xl font-semibold">Mañana · 24 h</p>
+            <p className="text-xs uppercase tracking-widest text-slate-400">Predicción eólica · Canarias</p>
+            <p className="mt-1 font-display text-lg font-semibold">
+              {p ? fechaLarga(p.fecha) : "Actualizada cada día"}
+            </p>
           </div>
           <span className="grid h-11 w-11 place-items-center rounded-full bg-teal-400/15 text-teal-300">
-            <Icon name="sun" size={22} />
+            <Icon name="wind" size={22} />
           </span>
         </div>
 
-        <svg viewBox="0 0 320 140" className="mt-6 w-full">
-          <defs>
-            <linearGradient id="area" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#2fd0bd" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#2fd0bd" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {[35, 70, 105].map((y) => (
-            <line key={y} x1="0" x2="320" y1={y} y2={y} stroke="white" strokeOpacity="0.08" />
-          ))}
-          <path
-            d="M0 132 C40 132 60 128 85 100 S130 22 160 20 S220 70 240 100 S290 132 320 132 L320 140 L0 140 Z"
-            fill="url(#area)"
-          />
-          <path
-            d="M0 132 C40 132 60 128 85 100 S130 22 160 20 S220 70 240 100 S290 132 320 132"
-            fill="none"
-            stroke="#6ee6d5"
-            strokeWidth="2.5"
-          />
-          <path
-            d="M0 134 C45 134 65 126 90 104 S135 36 160 34 S215 78 238 104 S292 134 320 134"
-            fill="none"
-            stroke="white"
-            strokeOpacity="0.45"
-            strokeWidth="1.5"
-            strokeDasharray="4 5"
-          />
-        </svg>
+        {p && p.prediccion_eolica_pct !== null ? (
+          <div className="mt-6">
+            <p className="font-display text-6xl font-bold text-teal-300 tabular-nums">{pct(p.prediccion_eolica_pct)}</p>
+            <p className="mt-2 text-sm text-slate-300">
+              de la electricidad de las islas será eólica hoy, según mi modelo.
+            </p>
+          </div>
+        ) : (
+          <p className="mt-6 text-sm text-slate-300">
+            Un modelo propio predice cada mañana qué parte de la electricidad de Canarias será eólica.
+          </p>
+        )}
 
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           {[
-            { k: "Precisión", v: "Validada" },
-            { k: "Alertas", v: "Activas" },
-            { k: "Horizonte", v: "1–6 h" },
+            { k: "Eólica real ayer", v: pct(p?.real_ayer_pct) },
+            { k: "Error ayer", v: pct(p?.error_ayer_pp, "p.p.") },
+            {
+              k: p?.n_dias_mae ? `Error medio (${p.n_dias_mae} d)` : "Error medio",
+              v: pct(p?.mae_30d, "p.p."),
+            },
+            { k: "Renovable ayer", v: pct(p?.renovable_ayer_pct) },
           ].map((s) => (
             <div key={s.k} className="rounded-lg bg-white/[0.06] px-3 py-2">
               <p className="text-[11px] text-slate-400">{s.k}</p>
-              <p className="text-sm font-semibold">{s.v}</p>
+              <p className="text-sm font-semibold tabular-nums">{s.v}</p>
             </div>
           ))}
         </div>
+
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-300"
+        >
+          Datos de REE y Open-Meteo · ver el proyecto
+          <Icon name="arrowRight" size={14} />
+        </a>
       </div>
 
-      <div className="absolute -bottom-8 -left-6 hidden rounded-xl border border-white/15 bg-navy-900/95 p-4 shadow-xl sm:block">
-        <p className="mb-2 flex items-center gap-2 text-xs text-slate-300">
-          <Icon name="wind" size={14} className="text-teal-300" /> Mix renovable
-        </p>
-        <div className="flex h-14 items-end gap-1.5">
-          {bars.map((h, i) => (
-            <span key={i} className="w-3 rounded-sm bg-teal-400/80" style={{ height: `${h}%` }} />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
