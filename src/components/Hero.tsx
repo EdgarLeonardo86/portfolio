@@ -80,6 +80,11 @@ const pct = (v: number | null | undefined, unit = "%") =>
     ? "—"
     : `${v.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`;
 
+// Los datos de ayer dependen de que REE publique el día completo; mientras tanto se marcan como pendientes.
+const PENDIENTE = "Pendiente (REE)";
+const deAyer = (hay: boolean, v: number | null | undefined, unit = "%") =>
+  hay && (v === null || v === undefined) ? PENDIENTE : pct(v, unit);
+
 const fechaLarga = (iso: string) => {
   const f = new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", {
     weekday: "long",
@@ -123,18 +128,26 @@ async function HeroVisual() {
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           {[
-            { k: "Eólica real ayer", v: pct(p?.real_ayer_pct), t: "Parte de la electricidad de Canarias que fue eólica ayer, según REE." },
-            { k: "Error ayer", v: pct(p?.error_ayer_pp, "p.p."), t: "Diferencia entre lo que predijo el modelo para ayer y el valor real, en puntos porcentuales." },
+            { k: "Eólica real ayer", v: deAyer(!!p, p?.real_ayer_pct), t: "Parte de la electricidad de Canarias que fue eólica ayer, según REE." },
+            { k: "Error ayer", v: deAyer(!!p, p?.error_ayer_pp, "p.p."), t: "Diferencia entre lo que predijo el modelo para ayer y el valor real, en puntos porcentuales." },
             {
               k: p?.n_dias_mae ? `Error medio (${p.n_dias_mae} d)` : "Error medio",
               v: pct(p?.mae_30d, "p.p."),
               t: "Media de los errores diarios en los últimos días con dato real, en puntos porcentuales.",
             },
-            { k: "Renovable ayer", v: pct(p?.renovable_ayer_pct), t: "Parte de la electricidad de Canarias que fue renovable (eólica, solar y otras) ayer." },
+            { k: "Renovable ayer", v: deAyer(!!p, p?.renovable_ayer_pct), t: "Parte de la electricidad de Canarias que fue renovable (eólica, solar y otras) ayer." },
           ].map((s) => (
             <div key={s.k} tabIndex={0} className="group relative rounded-lg bg-white/[0.06] px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
               <p className="text-[11px] text-slate-400">{s.k}</p>
-              <p className="text-sm font-semibold tabular-nums">{s.v}</p>
+              <p
+                className={
+                  s.v === PENDIENTE
+                    ? "text-sm font-medium text-slate-400"
+                    : "text-sm font-semibold tabular-nums"
+                }
+              >
+                {s.v}
+              </p>
               <span
                 role="tooltip"
                 className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-56 rounded-lg border border-white/15 bg-navy-900 px-3 py-2 text-xs leading-snug text-slate-200 opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
